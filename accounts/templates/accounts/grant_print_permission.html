@@ -1,0 +1,87 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Print Permissions{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Print Permissions</h3>
+
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">Awaiting Print Permission <span class="badge bg-light text-dark">{{ pending_print_count }}</span></h5>
+    </div>
+    <div class="card-body">
+        {% if validated_cards %}
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Term</th>
+                    <th>Average</th>
+                    <th>Validated By</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for card in validated_cards %}
+                <tr>
+                    <td><strong>{{ card.student.user.get_full_name }}</strong></td>
+                    <td>{{ card.student.school_class.name }}</td>
+                    <td><span class="badge bg-info">{{ card.term }}</span></td>
+                    <td>{{ card.average_score|floatformat:2 }}</td>
+                    <td>{{ card.validated_by.get_full_name }}</td>
+                    <td>
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="card_id" value="{{ card.id }}">
+                            <button type="submit" name="action" value="grant" class="btn btn-sm btn-success">Grant Print</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-success mb-0">All validated report cards have print permission.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if printed_cards %}
+<div class="card">
+    <div class="card-header bg-success text-white"><h5 class="mb-0">Recently Printed</h5></div>
+    <div class="card-body">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Term</th>
+                    <th>Granted By</th>
+                    <th>Granted At</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for card in printed_cards %}
+                <tr>
+                    <td>{{ card.student.user.get_full_name }}</td>
+                    <td>{{ card.student.school_class.name }}</td>
+                    <td><span class="badge bg-info">{{ card.term }}</span></td>
+                    <td>{{ card.print_permission_granted_by.get_full_name }}</td>
+                    <td>{{ card.print_permission_granted_at|date:"M d, Y H:i" }}</td>
+                    <td>
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="card_id" value="{{ card.id }}">
+                            <button type="submit" name="action" value="revoke" class="btn btn-sm btn-outline-warning">Revoke</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

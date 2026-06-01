@@ -1,0 +1,76 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Class Subjects - {{ my_class.name }}{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Class Subjects &mdash; {{ my_class.name }} <span class="badge bg-secondary">{{ my_class.get_series_display }}</span></h3>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white"><h5 class="mb-0">Available Subjects</h5></div>
+            <div class="card-body">
+                {% if available_subjects %}
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add">
+                    <div class="mb-3">
+                        <label class="form-label">Select Subject to Add</label>
+                        <select name="subject_id" class="form-select">
+                            {% for subject in available_subjects %}
+                            <option value="{{ subject.id }}">{{ subject.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Add to Class</button>
+                </form>
+                {% else %}
+                <div class="alert alert-info mb-0">All available subjects have been added to this class.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Assigned Subjects <span class="badge bg-light text-dark">{{ assigned_subjects|length }}</span></h5>
+            </div>
+            <div class="card-body">
+                {% if assigned_subjects %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Teacher</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subject in assigned_subjects %}
+                        <tr>
+                            <td><strong>{{ subject.name }}</strong></td>
+                            <td>{{ subject.teacher.get_full_name|default:"Unassigned" }}</td>
+                            <td>
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="remove">
+                                    <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('Remove {{ subject.name }} from this class?')">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="alert alert-warning mb-0">
+                    No subjects assigned to this class yet. Add subjects using the form.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

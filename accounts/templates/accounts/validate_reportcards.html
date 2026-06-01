@@ -1,0 +1,130 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Validate Report Cards{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <h1 class="mb-4">Report Card Validation</h1>
+            
+            {% if messages %}
+            <div class="alert-messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Pending Cards Section -->
+            <div class="card mb-5">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clock"></i> Pending Validation 
+                        <span class="badge bg-danger">{{ pending_count }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if pending_cards %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Student Name</th>
+                                        <th>Student ID</th>
+                                        <th>Class</th>
+                                        <th>Term</th>
+                                        <th>Total Score</th>
+                                        <th>Average</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for card in pending_cards %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ card.student.user.get_full_name }}</strong>
+                                        </td>
+                                        <td>{{ card.student.user.id }}</td>
+                                        <td>{{ card.student.school_class.name }}</td>
+                                        <td><span class="badge bg-info">{{ card.term }}</span></td>
+                                        <td><strong>{{ card.total_score }}</strong></td>
+                                        <td>{{ card.average_score|floatformat:2 }}</td>
+                                        <td>
+                                            <a href="{% url 'validate_reportcard_detail' card.id %}" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-eye"></i> Review
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> No pending report cards! All cards have been validated.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recently Validated Cards Section -->
+            <div class="card">
+                <div class="card-header bg-success">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle"></i> Recently Validated
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if validated_cards %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Student Name</th>
+                                        <th>Class</th>
+                                        <th>Term</th>
+                                        <th>Validated By</th>
+                                        <th>Validated At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for card in validated_cards %}
+                                    <tr>
+                                        <td>{{ card.student.user.get_full_name }}</td>
+                                        <td>{{ card.student.school_class.name }}</td>
+                                        <td><span class="badge bg-info">{{ card.term }}</span></td>
+                                        <td>{{ card.validated_by.get_full_name }}</td>
+                                        <td>{{ card.validated_at|date:"M d, Y H:i" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            No validated report cards yet.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .alert-messages {
+        margin-bottom: 1.5rem;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+    .badge {
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}

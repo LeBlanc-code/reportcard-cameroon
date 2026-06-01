@@ -1,0 +1,96 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Manage Classes{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Manage Classes</h3>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white"><h5 class="mb-0">Add New Class</h5></div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_class">
+                    <div class="mb-3">
+                        <label class="form-label">Class Name</label>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Form 5" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Series</label>
+                        <select name="series" class="form-select">
+                            {% for code, label in series_choices %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Section</label>
+                        <input type="text" name="section" class="form-control" placeholder="e.g. A, B">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Class Master (optional)</label>
+                        <select name="class_master" class="form-select">
+                            <option value="">---</option>
+                            {% for cm in class_masters %}
+                            <option value="{{ cm.id }}">{{ cm.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Add Class</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white"><h5 class="mb-0">Existing Classes</h5></div>
+            <div class="card-body">
+                {% if classes %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Class</th>
+                            <th>Series</th>
+                            <th>Section</th>
+                            <th>Class Master</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cls in classes %}
+                        <tr>
+                            <td><strong>{{ cls.name }}</strong></td>
+                            <td>{{ cls.get_series_display|default:"---" }}</td>
+                            <td>{{ cls.section|default:"---" }}</td>
+                            <td>{{ cls.class_master.get_full_name|default:"Unassigned" }}</td>
+                            <td>
+                                <form method="post" class="d-flex gap-2 align-items-center">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="assign_master">
+                                    <input type="hidden" name="class_id" value="{{ cls.id }}">
+                                    <select name="class_master" class="form-select form-select-sm" style="width:140px;">
+                                        <option value="">---</option>
+                                        {% for cm in class_masters %}
+                                        <option value="{{ cm.id }}" {% if cls.class_master == cm %}selected{% endif %}>
+                                            {{ cm.get_full_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="alert alert-info mb-0">No classes yet. Add one to get started.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

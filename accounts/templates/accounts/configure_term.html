@@ -1,0 +1,94 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Term Settings{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Term Configuration</h3>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white"><h5 class="mb-0">Add / Update Term</h5></div>
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                        <div class="form-text">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-success w-100">Save Term Settings</button>
+                </form>
+                <div class="alert alert-info small mt-3 mb-0">
+                    <strong>Workflow:</strong><br>
+                    1. Teachers upload marks <strong>before the marks deadline</strong> (max 3 days before closing).<br>
+                    2. Class master calculates averages after all marks are in.<br>
+                    3. Principal validates report cards between the deadline and closing day.<br>
+                    4. Students can view their report cards after <strong>{{ form.closing_time.value|default:"3:30 PM" }}</strong> on closing day.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white"><h5 class="mb-0">Configured Terms</h5></div>
+            <div class="card-body">
+                {% if configs %}
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>School</th>
+                            <th>Term</th>
+                            <th>Marks Deadline</th>
+                            <th>Closing Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for config in configs %}
+                        <tr>
+                            <td>{{ config.school.name }}</td>
+                            <td><strong>{{ config.term }}</strong></td>
+                            <td>
+                                {% if config.marks_deadline %}
+                                    {{ config.marks_deadline|date:"M d, Y" }}
+                                    {% if config.is_past_deadline %}<span class="badge bg-danger">Past</span>{% endif %}
+                                {% else %}
+                                    <span class="text-muted">Not set</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ config.closing_date|date:"M d, Y" }}</td>
+                            <td>{{ config.closing_time|time:"H:i" }}</td>
+                            <td>
+                                {% if config.is_active %}
+                                <span class="badge bg-success">Active</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'delete_term_config' config.id %}" class="btn btn-sm btn-outline-danger"
+                                   onclick="return confirm('Delete term {{ config.term }}?')">Delete</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="alert alert-info mb-0">No term configurations yet. Add one to get started.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">Welcome, {{ user.get_full_name }}</h3>
+
+{% if user.role == 'teacher' or user.role == 'class_master' %}
+    {% if deadlines %}
+    <div class="alert alert-warning mb-4">
+        <strong>Upcoming deadlines:</strong>
+        {% for d in deadlines %}
+            {{ d.term }} &mdash; marks due <strong>{{ d.marks_deadline|date:"M d, Y" }}</strong> (closing {{ d.closing_date|date:"M d, Y" }})
+            {% if not forloop.last %}&bull;{% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if past_deadlines %}
+    <div class="alert alert-danger mb-4">
+        <strong>Past deadlines:</strong>
+        {% for d in past_deadlines %}
+            {{ d.term }} &mdash; deadline was {{ d.marks_deadline|date:"M d, Y" }}. Marks are now locked.
+            {% if not forloop.last %}&bull;{% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endif %}
+
+{% if user.role == 'teacher' %}
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-success h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x1F4DD;</div>
+                <h5 class="card-title">Enter Marks</h5>
+                <p class="card-text text-muted">Submit student marks for your assigned subjects.</p>
+                <a href="{% url 'enter_mark' %}" class="btn btn-success">Open Form</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif user.role == 'class_master' %}
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-success h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x1F4DD;</div>
+                <h5 class="card-title">Enter Marks</h5>
+                <p class="card-text text-muted">Add marks for students in your class.</p>
+                <a href="{% url 'enter_mark' %}" class="btn btn-success">Open Form</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-primary h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x1F4CA;</div>
+                <h5 class="card-title">Class Statistics</h5>
+                <p class="card-text text-muted">
+                    {% if my_class %}
+                        {{ my_class.name }} &mdash; {{ student_count }} student{{ student_count|pluralize }}
+                    {% else %}
+                        Calculate averages and review class performance.
+                    {% endif %}
+                </p>
+                <a href="{% url 'class_statistics' %}" class="btn btn-primary">View Statistics</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif user.role == 'principal' or user.role == 'vice_principal' %}
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-warning h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x2705;</div>
+                <h5 class="card-title">Validate Report Cards</h5>
+                <p class="card-text text-muted">
+                    {% if pending_count %}
+                        <span class="badge bg-danger">{{ pending_count }}</span> pending
+                    {% else %}
+                        Review and approve report cards.
+                    {% endif %}
+                </p>
+                <a href="{% url 'validate_reportcards' %}" class="btn btn-warning">Validate Now</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-info h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x1F5A8;</div>
+                <h5 class="card-title">Print Permissions</h5>
+                <p class="card-text text-muted">
+                    {% if unprinted_count %}
+                        <span class="badge bg-info">{{ unprinted_count }}</span> awaiting print
+                    {% else %}
+                        Grant permission for hard-copy printing.
+                    {% endif %}
+                </p>
+                <a href="{% url 'grant_print_permission' %}" class="btn btn-info">Open</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-success h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x1F4C5;</div>
+                <h5 class="card-title">Term Settings</h5>
+                <p class="card-text text-muted">Configure term closing dates and times.</p>
+                <a href="{% url 'configure_term' %}" class="btn btn-success">Configure</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm border-secondary h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x1F464;</div>
+                <h5 class="card-title">Create Users</h5>
+                <p class="card-text text-muted">Add teachers, staff, and students to the system.</p>
+                <a href="{% url 'create_user' %}" class="btn btn-secondary">Create Account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif user.role == 'school_admin' %}
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-secondary h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x1F464;</div>
+                <h5 class="card-title">Create Users</h5>
+                <p class="card-text text-muted">Manage school users and access roles.</p>
+                <a href="{% url 'create_user' %}" class="btn btn-secondary">Create Account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% elif user.role == 'student' %}
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-info h-100">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 display-6">&#x1F4C4;</div>
+                <h5 class="card-title">My Report Card</h5>
+                <p class="card-text text-muted">View your report cards after term closing.</p>
+                <a href="{% url 'student_reportcard' %}" class="btn btn-info">View Report Cards</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

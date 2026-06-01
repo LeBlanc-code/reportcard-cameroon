@@ -1,0 +1,136 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Class Statistics{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Class Statistics &mdash; {{ my_class.name }}</h3>
+    <span class="badge bg-primary fs-6">{{ student_count }} student{{ student_count|pluralize }}</span>
+</div>
+
+{% if terms %}
+<div class="mb-4">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label fw-bold">Select Term:</label>
+            <select name="term" class="form-select" onchange="this.form.submit()">
+                {% for term in terms %}
+                <option value="{{ term }}" {% if term == selected_term %}selected{% endif %}>{{ term }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+</div>
+{% else %}
+<div class="alert alert-warning">No marks have been entered yet for this class.</div>
+{% endif %}
+
+{% if selected_term %}
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h6>Class Average</h6>
+                <h2>{{ class_average|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h6>Students with Marks</h6>
+                <h2>{{ stats|length }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning">
+            <div class="card-body text-center">
+                <h6>Total Students</h6>
+                <h2>{{ student_count }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if subject_averages %}
+<div class="card mb-4">
+    <div class="card-header"><h5 class="mb-0">Subject Performance</h5></div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Avg Score</th>
+                    <th>Highest</th>
+                    <th>Lowest</th>
+                    <th>Entries</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sa in subject_averages %}
+                <tr>
+                    <td><strong>{{ sa.subject__name }}</strong></td>
+                    <td>
+                        <span class="badge {% if sa.avg >= 70 %}bg-success{% elif sa.avg >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                            {{ sa.avg|floatformat:1 }}
+                        </span>
+                    </td>
+                    <td>{{ sa.max|floatformat:1 }}</td>
+                    <td>{{ sa.min|floatformat:1 }}</td>
+                    <td>{{ sa.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header"><h5 class="mb-0">Student Rankings - {{ selected_term }}</h5></div>
+    <div class="card-body">
+        {% if stats %}
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Student</th>
+                    <th>Subjects</th>
+                    <th>Total</th>
+                    <th>Average</th>
+                    <th>Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in stats %}
+                <tr>
+                    <td><strong>{{ forloop.counter }}</strong></td>
+                    <td>{{ entry.student.user.get_full_name }}</td>
+                    <td>{{ entry.mark_count }}</td>
+                    <td>{{ entry.total|floatformat:1 }}</td>
+                    <td>
+                        <span class="badge {% if entry.average >= 80 %}bg-success{% elif entry.average >= 70 %}bg-info{% elif entry.average >= 60 %}bg-warning{% elif entry.average >= 50 %}bg-secondary{% else %}bg-danger{% endif %}">
+                            {{ entry.average|floatformat:2 }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if entry.average >= 80 %}A
+                        {% elif entry.average >= 70 %}B
+                        {% elif entry.average >= 60 %}C
+                        {% elif entry.average >= 50 %}D
+                        {% else %}F{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-info">No marks recorded for this term yet.</div>
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

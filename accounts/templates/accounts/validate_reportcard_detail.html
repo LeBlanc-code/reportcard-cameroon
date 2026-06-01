@@ -1,0 +1,199 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}Validate Report Card - {{ reportcard.student.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>Report Card Validation</h1>
+                    <p class="text-muted">{{ reportcard.term }} - {{ reportcard.student.school_class.name }}</p>
+                </div>
+                <a href="{% url 'validate_reportcards' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+
+            {% if messages %}
+            <div class="alert-messages">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Student Information Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Student Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p>
+                                <strong>Full Name:</strong><br>
+                                {{ reportcard.student.user.get_full_name }}
+                            </p>
+                            <p>
+                                <strong>Student ID:</strong><br>
+                                {{ reportcard.student.user.id }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p>
+                                <strong>Class:</strong><br>
+                                {{ reportcard.student.school_class.name }}
+                            </p>
+                            <p>
+                                <strong>Email:</strong><br>
+                                {{ reportcard.student.user.email }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Marks Details Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Subject Marks</h5>
+                </div>
+                <div class="card-body">
+                    {% if marks %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Subject</th>
+                                        <th>Teacher</th>
+                                        <th>Score</th>
+                                        <th>Grade</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mark in marks %}
+                                    <tr>
+                                        <td><strong>{{ mark.subject.name }}</strong></td>
+                                        <td>{{ mark.subject.teacher.get_full_name }}</td>
+                                        <td>
+                                            <span class="badge bg-info">{{ mark.score }}</span>
+                                        </td>
+                                        <td>
+                                            {% if mark.score >= 80 %}
+                                                <span class="badge bg-success">A</span>
+                                            {% elif mark.score >= 70 %}
+                                                <span class="badge bg-info">B</span>
+                                            {% elif mark.score >= 60 %}
+                                                <span class="badge bg-warning">C</span>
+                                            {% elif mark.score >= 50 %}
+                                                <span class="badge bg-warning">D</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">F</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> No marks recorded for this student in this term.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Summary Card -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Summary Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Total Score</h6>
+                            <h3 class="text-primary">{{ total_score }}</h3>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Average Score</h6>
+                            <h3 class="text-success">{{ average_score|floatformat:2 }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Validation Status Card -->
+            <div class="card mb-4">
+                <div class="card-header {% if reportcard.validated %}bg-success{% else %}bg-warning{% endif %} text-white">
+                    <h5 class="mb-0">Validation Status</h5>
+                </div>
+                <div class="card-body">
+                    {% if reportcard.validated %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i> <strong>Validated</strong>
+                        </div>
+                        <p>
+                            <strong>Validated By:</strong> {{ reportcard.validated_by.get_full_name }}<br>
+                            <strong>Validated At:</strong> {{ reportcard.validated_at|date:"F d, Y \a\t H:i" }}
+                        </p>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-clock"></i> <strong>Pending Validation</strong>
+                        </div>
+                        <p class="text-muted">This report card is awaiting your approval.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            {% if not reportcard.validated %}
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="mb-3">Validation Actions</h6>
+                    <form method="POST" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <button type="submit" name="action" value="approve" class="btn btn-success btn-lg">
+                            <i class="fas fa-check"></i> Approve Report Card
+                        </button>
+                        <button type="submit" name="action" value="reject" class="btn btn-outline-danger btn-lg"
+                                onclick="return confirm('Are you sure you want to reject this report card?');">
+                            <i class="fas fa-times"></i> Mark as Pending
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="card bg-light border-success">
+                <div class="card-body">
+                    <div class="alert alert-success mb-0">
+                        <i class="fas fa-check-circle"></i> This report card has been approved and cannot be modified.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .alert-messages {
+        margin-bottom: 1.5rem;
+    }
+    .card-header h5 {
+        margin: 0;
+    }
+    .gap-2 {
+        gap: 0.5rem;
+    }
+    .table-striped tbody tr:nth-child(odd) {
+        background-color: #f9f9f9;
+    }
+</style>
+{% endblock %}
