@@ -2,6 +2,8 @@
 
 A complete Django-based report card and transcript management system for secondary and high schools in Cameroon.
 
+> **Live Site:** [https://reportcard-cameroon.onrender.com](https://reportcard-cameroon.onrender.com)
+
 ## Features
 
 ### Role-Based Access
@@ -123,32 +125,48 @@ DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
 # PostgreSQL (remove/comment out to use SQLite)
-DATABASE_NAME=reportcard_db
-DATABASE_USER=postgres
-DATABASE_PASSWORD=your-password
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
+# DATABASE_URL=postgres://user:password@localhost:5432/reportcard_db
 ```
 
 ---
 
-## Production Deployment
+## Deploy to Render (Free — Requires Credit Card)
 
-### Option 1: Render (Easiest)
+### Option A: Blueprint Deploy (Recommended)
 
-1. Push to GitHub
-2. Connect repo to [Render](https://render.com)
-3. Set build command: `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
-4. Set start command: `gunicorn config.wsgi:application`
-5. Add environment variables in Render dashboard
+1. Push the project to a **GitHub repository**
+2. Go to [render.com](https://render.com) → **New → Blueprint**
+3. Connect your GitHub repo — Render reads `render.yaml` automatically
+4. Everything is configured: PostgreSQL database, HTTPS, secret key, health checks
 
-### Option 2: PythonAnywhere
+### Option B: Manual Setup
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed guide.
+1. **Create PostgreSQL** — Render Dashboard → **New → PostgreSQL**
+2. **Create Web Service** — Connect GitHub repo, set:
+   - **Build Command:** `pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate`
+   - **Start Command:** `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
+   - **Health Check Path:** `/health/`
+3. Add the PostgreSQL **Internal Database URL** as `DATABASE_URL` env var
 
-### Option 3: Railway / Heroku
+### After Deploying
 
-The `Procfile` and `runtime.txt` are pre-configured for Heroku-style platforms.
+SSH into the service or use Render's shell to seed test data:
+
+```bash
+python manage.py seed
+```
+
+> **Test accounts** (after seeding):
+> - `admin` / `admin123` (superuser)
+> - `principal1` / `pass123`
+> - `teacher1` / `pass123`
+> - `student1` / `pass123`
+
+### Free Tier Notes
+
+- App **sleeps after 15 minutes** of inactivity (cold start takes ~30 seconds)
+- **750 hours/month** runtime (enough for 24/7)
+- PostgreSQL free tier: 1 GB storage, expires after 90 days (back up your data)
 
 ---
 

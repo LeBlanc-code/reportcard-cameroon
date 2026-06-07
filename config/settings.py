@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
 import os
 
 load_dotenv()
@@ -31,6 +32,9 @@ if not SECRET_KEY:
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+render_host = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+if render_host:
+    ALLOWED_HOSTS.append(render_host)
 
 
 # Application definition
@@ -84,25 +88,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASE_NAME = os.getenv('DATABASE_NAME')
-if DATABASE_NAME:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': DATABASE_NAME,
-            'USER': os.getenv('DATABASE_USER'),
-            'PASSWORD': os.getenv('DATABASE_PASSWORD'),
-            'HOST': os.getenv('DATABASE_HOST'),
-            'PORT': os.getenv('DATABASE_PORT'),
-        }
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+        conn_max_age=600,
+    )
+}
 
 
 # Password validation

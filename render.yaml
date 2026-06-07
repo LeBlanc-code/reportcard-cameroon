@@ -5,12 +5,21 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    healthCheckPath: /health/
     envVars:
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
-        value: "reportcard-cameroon.onrender.com"
+        value: ".onrender.com,localhost,127.0.0.1"
       - key: PYTHON_VERSION
         value: "3.12.7"
+      - fromDatabase:
+          name: reportcard-db
+          property: connectionString
+        key: DATABASE_URL
+
+databases:
+  - name: reportcard-db
+    plan: free
