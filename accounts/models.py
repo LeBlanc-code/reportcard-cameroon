@@ -30,10 +30,20 @@ class CustomUser(AbstractUser):
         ('student', 'Student'),
     ]
 
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+    ]
+
     role = models.CharField(
         max_length=20,
         choices=ROLE_CHOICES,
         default='student'
+    )
+    gender = models.CharField(
+        max_length=1,
+        choices=GENDER_CHOICES,
+        blank=True,
     )
     phone_number = models.CharField(max_length=20, blank=True)
     school = models.ForeignKey(

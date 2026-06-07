@@ -6,6 +6,7 @@ from . import views
 urlpatterns = [
     path('admin/', lambda request: redirect('/admin/')),
     path('login/',       views.login_view,      name='login'),
+    path('signup/',      views.signup_view,      name='signup'),
     path('logout/',      views.logout_view,      name='logout'),
     path('dashboard/',   views.dashboard_view,   name='dashboard'),
     path('create-user/', views.create_user_view, name='create_user'),

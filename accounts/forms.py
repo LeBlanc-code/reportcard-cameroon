@@ -211,6 +211,36 @@ class MarkForm(forms.ModelForm):
         }
 
 
+class SignupForm(UserCreationForm):
+    class Meta:
+        model = CustomUser
+        fields = [
+            'username', 'first_name', 'last_name',
+            'email', 'phone_number', 'gender', 'role',
+            'password1', 'password2'
+        ]
+        widgets = {
+            'username':     forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Choose a username'}),
+            'first_name':   forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'First name'}),
+            'last_name':    forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Last name'}),
+            'email':        forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email address'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Phone number (optional)'}),
+            'gender':       forms.Select(attrs={'class': 'form-select'}),
+            'role':         forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    role = forms.ChoiceField(
+        choices=[('teacher', 'Teacher'), ('student', 'Student')],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['password1'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Password'})
+        self.fields['password2'].widget.attrs.update({'class': 'form-control', 'placeholder': 'Confirm password'})
+        self.fields['email'].required = True
+
+
 class TermConfigForm(forms.ModelForm):
     class Meta:
         model = TermConfig

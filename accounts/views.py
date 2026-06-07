@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db.models import Avg, Count, Max, Min, Sum, Q
 from django_ratelimit.decorators import ratelimit
-from .forms import LoginForm, CreateUserForm, MarkForm, TermConfigForm
+from .forms import LoginForm, CreateUserForm, MarkForm, TermConfigForm, SignupForm
 from .models import ReportCard, Mark, StudentProfile, Subject, TermConfig, CustomUser, Class, Transcript, Activity
 from .decorators import role_required
 from .services import MarkSubmissionService
@@ -41,6 +41,31 @@ def logout_view(request):
     logout(request)
     messages.info(request, 'You have been logged out.')
     return redirect('login')
+
+
+@ratelimit(key='ip', rate='5/m', method='POST')
+def signup_view(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    was_limited = getattr(request, 'limited', False)
+    if was_limited:
+        messages.error(request, 'Too many signup attempts. Please try again in 5 minutes.')
+        return render(request, 'accounts/signup.html', {'form': SignupForm()})
+
+    form = SignupForm(request.POST or None)
+
+    if request.method == 'POST':
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            role = user.role
+            messages.success(request, f'Account created! Welcome, {user.get_full_name()} ({role.title()}).')
+            return redirect('dashboard')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+
+    return render(request, 'accounts/signup.html', {'form': form})
 
 
 @login_required
