@@ -3,11 +3,11 @@
 {% block title %}Validate Report Cards{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<div class="container mt-3">
     <div class="row">
         <div class="col-md-12">
-            <h1 class="mb-4">Report Card Validation</h1>
-            
+            <h1 class="mb-3">Report Card Validation</h1>
+
             {% if messages %}
             <div class="alert-messages">
                 {% for message in messages %}
@@ -19,12 +19,39 @@
             </div>
             {% endif %}
 
-            <!-- Pending Cards Section -->
+            {% if pending_cards %}
+            <div class="card mb-3">
+                <div class="card-body bg-light">
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <form method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" name="action" value="validate_all" class="btn btn-success"
+                                    onclick="return confirm('Validate ALL {{ pending_count|escapejs }} pending report cards?')">
+                                Validate All ({{ pending_count }})
+                            </button>
+                        </form>
+
+                        <form method="post" class="d-flex gap-2 align-items-center">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="validate_by_class">
+                            <select name="class_id" class="form-select" style="width:200px;">
+                                <option value="">Validate by class...</option>
+                                {% for cls in classes %}
+                                <option value="{{ cls.id }}">{{ cls.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-outline-success"
+                                    onclick="return confirm('Validate all pending for this class?')">Go</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
             <div class="card mb-5">
                 <div class="card-header bg-warning">
                     <h5 class="mb-0">
-                        <i class="fas fa-clock"></i> Pending Validation 
-                        <span class="badge bg-danger">{{ pending_count }}</span>
+                        Pending Validation <span class="badge bg-danger">{{ pending_count }}</span>
                     </h5>
                 </div>
                 <div class="card-body">
@@ -34,10 +61,9 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Student Name</th>
-                                        <th>Student ID</th>
                                         <th>Class</th>
                                         <th>Term</th>
-                                        <th>Total Score</th>
+                                        <th>Total</th>
                                         <th>Average</th>
                                         <th>Action</th>
                                     </tr>
@@ -45,19 +71,14 @@
                                 <tbody>
                                     {% for card in pending_cards %}
                                     <tr>
-                                        <td>
-                                            <strong>{{ card.student.user.get_full_name }}</strong>
-                                        </td>
-                                        <td>{{ card.student.user.id }}</td>
+                                        <td><strong>{{ card.student.user.get_full_name }}</strong></td>
                                         <td>{{ card.student.school_class.name }}</td>
                                         <td><span class="badge bg-info">{{ card.term }}</span></td>
                                         <td><strong>{{ card.total_score }}</strong></td>
                                         <td>{{ card.average_score|floatformat:2 }}</td>
                                         <td>
-                                            <a href="{% url 'validate_reportcard_detail' card.id %}" 
-                                               class="btn btn-sm btn-primary">
-                                                <i class="fas fa-eye"></i> Review
-                                            </a>
+                                            <a href="{% url 'validate_reportcard_detail' card.id %}"
+                                               class="btn btn-sm btn-primary">Review</a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -65,19 +86,14 @@
                             </table>
                         </div>
                     {% else %}
-                        <div class="alert alert-success">
-                            <i class="fas fa-check-circle"></i> No pending report cards! All cards have been validated.
-                        </div>
+                        <div class="alert alert-success">All report cards validated!</div>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Recently Validated Cards Section -->
             <div class="card">
                 <div class="card-header bg-success">
-                    <h5 class="mb-0">
-                        <i class="fas fa-check-circle"></i> Recently Validated
-                    </h5>
+                    <h5 class="mb-0">Recently Validated</h5>
                 </div>
                 <div class="card-body">
                     {% if validated_cards %}
@@ -106,25 +122,11 @@
                             </table>
                         </div>
                     {% else %}
-                        <div class="alert alert-info">
-                            No validated report cards yet.
-                        </div>
+                        <div class="alert alert-info">No validated report cards yet.</div>
                     {% endif %}
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-    .alert-messages {
-        margin-bottom: 1.5rem;
-    }
-    .table-hover tbody tr:hover {
-        background-color: #f5f5f5;
-    }
-    .badge {
-        font-size: 0.85rem;
-    }
-</style>
 {% endblock %}

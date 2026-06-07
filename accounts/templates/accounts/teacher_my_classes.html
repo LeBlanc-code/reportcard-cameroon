@@ -1,0 +1,44 @@
+{% extends 'accounts/base.html' %}
+
+{% block title %}My Classes{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">My Classes</h3>
+
+{% if class_data %}
+<div class="row g-4">
+    {% for item in class_data %}
+    <div class="col-md-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">{{ item.class.name }}</h5>
+                <small>{{ item.class.get_series_display }}{% if item.class.section %} &mdash; Section {{ item.class.section }}{% endif %}</small>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">
+                    <strong>{{ item.student_count }}</strong> student{{ item.student_count|pluralize }}
+                    &bull; <strong>{{ item.marks_count }}</strong> mark{{ item.marks_count|pluralize }} submitted
+                </p>
+
+                <p class="small fw-bold mb-1">Your subjects:</p>
+                <ul class="list-unstyled small mb-3">
+                    {% for subj in item.subjects %}
+                    <li class="text-muted">&bull; {{ subj.name }}</li>
+                    {% endfor %}
+                </ul>
+
+                <a href="{% url 'enter_mark' %}?class_id={{ item.class.id }}" class="btn btn-success w-100">
+                    Enter Marks
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    You have not been assigned to teach any subjects in any class yet.
+    Please contact the school administration.
+</div>
+{% endif %}
+{% endblock %}

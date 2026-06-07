@@ -54,7 +54,7 @@
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="activity_id" value="{{ activity.id }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger"
-                                            onclick="return confirm('Remove activity {{ activity.name }}?')">Remove</button>
+                                            onclick="return confirm('Remove activity {{ activity.name|escapejs }}?')">Remove</button>
                                 </form>
                             </td>
                         </tr>

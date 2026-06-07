@@ -86,9 +86,15 @@
                     <a class="nav-link" href="{% url 'dashboard' %}">🏠 Dashboard</a>
                 </li>
 
-                {% if user.role == 'teacher' or user.role == 'class_master' %}
+                {% if user.is_staff_member %}
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'enter_mark' %}">Enter Marks</a>
+                </li>
+                {% endif %}
+
+                {% if user.role == 'teacher' %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'teacher_my_classes' %}">My Classes</a>
                 </li>
                 {% endif %}
 

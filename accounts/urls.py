@@ -10,6 +10,7 @@ urlpatterns = [
     path('dashboard/',   views.dashboard_view,   name='dashboard'),
     path('create-user/', views.create_user_view, name='create_user'),
     path('enter-mark/',  views.enter_mark_view,  name='enter_mark'),
+    path('my-classes/',  views.teacher_my_classes_view, name='teacher_my_classes'),
     path('validate-reportcards/', views.validate_reportcards_view, name='validate_reportcards'),
     path('validate-reportcard/<int:reportcard_id>/', views.validate_reportcard_detail_view, name='validate_reportcard_detail'),
 

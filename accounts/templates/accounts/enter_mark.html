@@ -7,7 +7,12 @@
     <div class="col-md-6">
         <div class="card shadow-sm mt-4">
             <div class="card-body p-4">
-                <h4 class="card-title mb-4">Enter Mark</h4>
+                <h4 class="card-title mb-4">
+                    Enter Mark
+                    {% if target_class %}
+                    <span class="text-muted fs-6">&mdash; {{ target_class.name }}</span>
+                    {% endif %}
+                </h4>
 
                 <div class="alert alert-warning small mb-3">
                     Marks can only be entered <strong>before the deadline</strong> set by the principal

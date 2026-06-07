@@ -1,19 +1,27 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db.models import Avg, Count, Max, Min, Sum, Q
+from django_ratelimit.decorators import ratelimit
 from .forms import LoginForm, CreateUserForm, MarkForm, TermConfigForm
-from .models import ReportCard, Mark, StudentProfile, TermConfig, CustomUser, Class, Transcript, Activity
+from .models import ReportCard, Mark, StudentProfile, Subject, TermConfig, CustomUser, Class, Transcript, Activity
 from .decorators import role_required
 from .services import MarkSubmissionService
 
 
+@ratelimit(key='ip', rate='5/m', method='POST')
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
+
+    was_limited = getattr(request, 'limited', False)
+    if was_limited:
+        messages.error(request, 'Too many login attempts. Please try again in 5 minutes.')
+        return render(request, 'accounts/login.html', {'form': LoginForm()})
 
     form = LoginForm(request, data=request.POST or None)
 
@@ -106,10 +114,45 @@ def create_user_view(request):
 
 
 @login_required
-@role_required('teacher', 'class_master')
+@role_required('teacher')
+def teacher_my_classes_view(request):
+    user = request.user
+    classes = Class.objects.filter(
+        subjects__teacher=user
+    ).prefetch_related('subjects').distinct()
+
+    class_data = []
+    for cls in classes:
+        my_subjects = cls.subjects.filter(teacher=user)
+        student_count = StudentProfile.objects.filter(school_class=cls).count()
+        marks_count = Mark.objects.filter(
+            subject__in=my_subjects,
+            student__school_class=cls
+        ).count()
+        class_data.append({
+            'class': cls,
+            'subjects': my_subjects,
+            'student_count': student_count,
+            'marks_count': marks_count,
+        })
+
+    return render(request, 'accounts/teacher_my_classes.html', {
+        'class_data': class_data,
+    })
+
+
+@login_required
+@role_required('teacher', 'class_master', 'principal', 'vice_principal', 'school_admin')
 def enter_mark_view(request):
+    class_id = request.GET.get('class_id')
+    if class_id:
+        try:
+            class_id = int(class_id)
+        except (ValueError, TypeError):
+            class_id = None
+
     if request.method == 'POST':
-        form = MarkForm(request.POST, user=request.user)
+        form = MarkForm(request.POST, user=request.user, class_id=class_id)
         if form.is_valid():
             try:
                 student = form.cleaned_data['student']
@@ -127,7 +170,10 @@ def enter_mark_view(request):
 
                 if success:
                     messages.success(request, message)
-                    return redirect('dashboard')
+                    redirect_url = reverse('enter_mark')
+                    if class_id:
+                        redirect_url += f'?class_id={class_id}'
+                    return redirect(redirect_url)
             except ValidationError as e:
                 messages.error(request, str(e))
         else:
@@ -135,8 +181,14 @@ def enter_mark_view(request):
                 for error in form.non_field_errors():
                     messages.error(request, str(error))
     else:
-        form = MarkForm(user=request.user)
-    return render(request, 'accounts/enter_mark.html', {'form': form})
+        form = MarkForm(user=request.user, class_id=class_id)
+
+    target_class = form.target_class if hasattr(form, 'target_class') else None
+
+    return render(request, 'accounts/enter_mark.html', {
+        'form': form,
+        'target_class': target_class,
+    })
 
 
 @login_required
@@ -150,10 +202,32 @@ def validate_reportcards_view(request):
         'student__user', 'student__school_class', 'validated_by'
     ).order_by('-validated_at')[:10]
 
+    classes = Class.objects.filter(school=request.user.school)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        now = timezone.now()
+
+        if action == 'validate_all':
+            count = pending_cards.update(validated=True, validated_by=request.user, validated_at=now)
+            messages.success(request, f"Validated {count} report card(s) at once.")
+            return redirect('validate_reportcards')
+
+        elif action == 'validate_by_class':
+            class_id = request.POST.get('class_id')
+            if class_id:
+                count = pending_cards.filter(
+                    student__school_class_id=class_id
+                ).update(validated=True, validated_by=request.user, validated_at=now)
+                cls = get_object_or_404(Class, id=class_id)
+                messages.success(request, f"Validated {count} report card(s) for {cls.name}.")
+            return redirect('validate_reportcards')
+
     context = {
         'pending_cards': pending_cards,
         'validated_cards': validated_cards,
         'pending_count': pending_cards.count(),
+        'classes': classes,
     }
     return render(request, 'accounts/validate_reportcards.html', context)
 
@@ -446,8 +520,12 @@ def grant_print_permission_view(request):
 def manage_classes_view(request):
     user = request.user
     school = user.school
-    classes = Class.objects.filter(school=school).select_related('class_master')
+    if not school:
+        messages.error(request, "You are not assigned to a school. Contact the system administrator.")
+        return redirect('dashboard')
+    classes = Class.objects.filter(school=school).select_related('class_master').prefetch_related('subjects')
     class_masters = CustomUser.objects.filter(role='class_master', school=school)
+    all_subjects = Subject.objects.all()
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -474,12 +552,35 @@ def manage_classes_view(request):
                 cls.class_master = new_master
                 cls.save()
                 messages.success(request, f"Class master for {cls.name} updated.")
+            return redirect('manage_classes')
+
+        elif action == 'add_subject_to_class':
+            class_id = request.POST.get('class_id')
+            subject_id = request.POST.get('subject_id')
+            if class_id and subject_id:
+                cls = get_object_or_404(Class, id=class_id, school=school)
+                subject = get_object_or_404(Subject, id=subject_id)
+                cls.subjects.add(subject)
+                messages.success(request, f"'{subject.name}' added to {cls.name}.")
+            return redirect('manage_classes')
+
+        elif action == 'remove_subject_from_class':
+            class_id = request.POST.get('class_id')
+            subject_id = request.POST.get('subject_id')
+            if class_id and subject_id:
+                cls = get_object_or_404(Class, id=class_id, school=school)
+                subject = get_object_or_404(Subject, id=subject_id)
+                cls.subjects.remove(subject)
+                messages.success(request, f"'{subject.name}' removed from {cls.name}.")
+            return redirect('manage_classes')
+
         return redirect('manage_classes')
 
     context = {
         'classes': classes,
         'class_masters': class_masters,
         'series_choices': Class.SERIES_CHOICES,
+        'all_subjects': all_subjects,
     }
     return render(request, 'accounts/manage_classes.html', context)
 
@@ -489,8 +590,12 @@ def manage_classes_view(request):
 def manage_subjects_view(request):
     user = request.user
     school = user.school
-    subjects = Subject.objects.all()
-    teachers = CustomUser.objects.filter(role='teacher', school=school)
+    subjects = Subject.objects.prefetch_related('classes__school').all()
+    teachers = CustomUser.objects.filter(
+        role__in=('teacher', 'class_master', 'principal', 'vice_principal', 'school_admin'),
+        school=school
+    )
+    classes = Class.objects.filter(school=school)
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -498,7 +603,7 @@ def manage_subjects_view(request):
             name = request.POST.get('name', '').strip()
             teacher_id = request.POST.get('teacher') or None
             if name:
-                teacher = CustomUser.objects.filter(id=teacher_id, role='teacher').first() if teacher_id else None
+                teacher = CustomUser.objects.filter(id=teacher_id, is_active=True).first() if teacher_id else None
                 Subject.objects.create(name=name, teacher=teacher)
                 messages.success(request, f"Subject '{name}' added.")
         elif action == 'assign':
@@ -506,14 +611,30 @@ def manage_subjects_view(request):
             teacher_id = request.POST.get('teacher_id') or None
             if subject_id:
                 subject = get_object_or_404(Subject, id=subject_id)
-                subject.teacher = CustomUser.objects.filter(id=teacher_id, role='teacher').first() if teacher_id else None
+                subject.teacher = CustomUser.objects.filter(id=teacher_id, is_active=True).first() if teacher_id else None
                 subject.save()
                 messages.success(request, f"Teacher assigned to '{subject.name}'.")
+        elif action == 'delete':
+            subject_id = request.POST.get('subject_id')
+            if subject_id:
+                subject = get_object_or_404(Subject, id=subject_id)
+                name = subject.name
+                subject.delete()
+                messages.success(request, f"Subject '{name}' permanently deleted.")
+        elif action == 'remove_from_class':
+            subject_id = request.POST.get('subject_id')
+            class_id = request.POST.get('class_id')
+            if subject_id and class_id:
+                subject = get_object_or_404(Subject, id=subject_id)
+                cls = get_object_or_404(Class, id=class_id, school=school)
+                cls.subjects.remove(subject)
+                messages.success(request, f"'{subject.name}' removed from {cls.name}.")
         return redirect('manage_subjects')
 
     context = {
         'subjects': subjects,
         'teachers': teachers,
+        'classes': classes,
     }
     return render(request, 'accounts/manage_subjects.html', context)
 

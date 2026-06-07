@@ -29,21 +29,23 @@ class Command(BaseCommand):
 
         created_users = {}
         for username, (first, last, role, is_super) in users.items():
-            user, created = CustomUser.objects.get_or_create(
-                username=username,
-                defaults={
-                    'email': f'{username}@school.cm',
-                    'first_name': first,
-                    'last_name': last,
-                    'role': role,
-                    'school': school,
-                    'is_superuser': is_super,
-                    'is_staff': is_super,
-                }
-            )
-            if created:
+            try:
+                user = CustomUser.objects.get(username=username)
+                created = False
+            except CustomUser.DoesNotExist:
+                user = CustomUser(
+                    username=username,
+                    email=f'{username}@school.cm',
+                    first_name=first,
+                    last_name=last,
+                    role=role,
+                    school=school,
+                    is_superuser=is_super,
+                    is_staff=is_super,
+                )
                 user.set_password('pass123')
                 user.save()
+                created = True
             created_users[username] = user
             self.stdout.write(f'  User: {username} ({role})')
 
@@ -102,15 +104,17 @@ class Command(BaseCommand):
         # Report card
         ReportCard.objects.get_or_create(student=sp, term='Term 1')
 
-        # Term configs
+        # Term configs (past, current, future)
+        past = date.today() - timedelta(days=30)
+        past_deadline = past - timedelta(days=2)
         future = date.today() + timedelta(days=14)
         deadline = future - timedelta(days=2)
         TermConfig.objects.get_or_create(
             school=school, term='Term 1',
             defaults={
-                'closing_date': date.today(),
+                'closing_date': past,
                 'closing_time': time(15, 30),
-                'marks_deadline': date.today() + timedelta(days=5),
+                'marks_deadline': past_deadline,
                 'created_by': created_users['principal1'],
             }
         )

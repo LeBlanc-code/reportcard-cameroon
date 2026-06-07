@@ -78,7 +78,7 @@
                             </td>
                             <td>
                                 <a href="{% url 'delete_term_config' config.id %}" class="btn btn-sm btn-outline-danger"
-                                   onclick="return confirm('Delete term {{ config.term }}?')">Delete</a>
+                                   onclick="return confirm('Delete term {{ config.term|escapejs }}?')">Delete</a>
                             </td>
                         </tr>
                         {% endfor %}

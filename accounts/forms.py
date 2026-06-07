@@ -107,21 +107,48 @@ class CreateUserForm(UserCreationForm):
 
 
 class MarkForm(forms.ModelForm):
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, class_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+        self.target_class = None
 
         subject_qs = Subject.objects.all()
         student_qs = StudentProfile.objects.all()
 
         if user is not None:
             if user.role == 'teacher':
-                subject_qs = Subject.objects.filter(teacher=user)
+                teacher_classes = Class.objects.filter(subjects__teacher=user).distinct()
+                if class_id:
+                    self.target_class = teacher_classes.filter(id=class_id).first()
+                else:
+                    self.target_class = teacher_classes.first()
+
+                if self.target_class:
+                    subject_qs = self.target_class.subjects.filter(teacher=user)
+                    student_qs = StudentProfile.objects.filter(school_class=self.target_class)
+                else:
+                    subject_qs = Subject.objects.filter(teacher=user)
+                    student_qs = StudentProfile.objects.filter(
+                        school_class__in=teacher_classes
+                    )
             elif user.role == 'class_master':
                 student_qs = StudentProfile.objects.filter(school_class__class_master=user)
                 my_class = Class.objects.filter(class_master=user).first()
                 if my_class:
+                    self.target_class = my_class
                     subject_qs = my_class.subjects.all()
+            elif user.role in ('principal', 'vice_principal', 'school_admin'):
+                if class_id:
+                    self.target_class = Class.objects.filter(
+                        id=class_id, school=user.school
+                    ).first()
+                if self.target_class:
+                    subject_qs = self.target_class.subjects.all()
+                    student_qs = StudentProfile.objects.filter(school_class=self.target_class)
+                else:
+                    student_qs = StudentProfile.objects.filter(
+                        school_class__school=user.school
+                    )
 
         self.fields['subject'].queryset = subject_qs
         self.fields['student'].queryset = student_qs

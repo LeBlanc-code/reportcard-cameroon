@@ -45,7 +45,7 @@ class CustomUser(AbstractUser):
     )
 
     def is_teacher(self):
-        return self.role == 'teacher'
+        return self.role != 'student'
 
     def is_class_master(self):
         return self.role == 'class_master'
@@ -61,6 +61,9 @@ class CustomUser(AbstractUser):
 
     def is_student(self):
         return self.role == 'student'
+
+    def is_staff_member(self):
+        return self.role in ('teacher', 'class_master', 'principal', 'vice_principal', 'school_admin')
 
     def can_act_as_principal(self):
         return self.role in ('principal', 'vice_principal') or self.is_superuser or self.is_staff
@@ -155,7 +158,7 @@ class Subject(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        limit_choices_to={'role': 'teacher'}
+        limit_choices_to=~models.Q(role='student')
     )
     school_class = models.ForeignKey(
         Class,

@@ -6,7 +6,7 @@
 <h3 class="mb-4">Manage Classes</h3>
 
 <div class="row">
-    <div class="col-md-5">
+    <div class="col-md-4">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-success text-white"><h5 class="mb-0">Add New Class</h5></div>
             <div class="card-body">
@@ -44,19 +44,20 @@
         </div>
     </div>
 
-    <div class="col-md-7">
+    <div class="col-md-8">
         <div class="card shadow-sm">
             <div class="card-header bg-primary text-white"><h5 class="mb-0">Existing Classes</h5></div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 {% if classes %}
-                <table class="table table-hover">
-                    <thead>
+                <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
                         <tr>
                             <th>Class</th>
                             <th>Series</th>
                             <th>Section</th>
                             <th>Class Master</th>
-                            <th></th>
+                            <th>Subjects</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -65,13 +66,12 @@
                             <td><strong>{{ cls.name }}</strong></td>
                             <td>{{ cls.get_series_display|default:"---" }}</td>
                             <td>{{ cls.section|default:"---" }}</td>
-                            <td>{{ cls.class_master.get_full_name|default:"Unassigned" }}</td>
                             <td>
-                                <form method="post" class="d-flex gap-2 align-items-center">
+                                <form method="post" class="d-flex gap-1 align-items-center">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="assign_master">
                                     <input type="hidden" name="class_id" value="{{ cls.id }}">
-                                    <select name="class_master" class="form-select form-select-sm" style="width:140px;">
+                                    <select name="class_master" class="form-select form-select-sm" style="width:130px;">
                                         <option value="">---</option>
                                         {% for cm in class_masters %}
                                         <option value="{{ cm.id }}" {% if cls.class_master == cm %}selected{% endif %}>
@@ -79,15 +79,51 @@
                                         </option>
                                         {% endfor %}
                                     </select>
-                                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Set</button>
+                                </form>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap align-items-center gap-1">
+                                    {% for subject in cls.subjects.all %}
+                                    <span class="badge bg-secondary d-inline-flex align-items-center gap-1">
+                                        {{ subject.name }}
+                                        <form method="post" class="d-inline" style="line-height:1;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="remove_subject_from_class">
+                                            <input type="hidden" name="class_id" value="{{ cls.id }}">
+                                            <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                            <button type="submit" class="btn-close btn-close-white"
+                                                    style="font-size:0.45rem;"
+                                                    aria-label="Remove {{ subject.name }}"
+                                                    onclick="return confirm('Remove {{ subject.name|escapejs }} from {{ cls.name|escapejs }}?')"></button>
+                                        </form>
+                                    </span>
+                                    {% empty %}
+                                    <span class="text-muted small">None</span>
+                                    {% endfor %}
+                                </div>
+                                <form method="post" class="d-flex gap-1 mt-1">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="add_subject_to_class">
+                                    <input type="hidden" name="class_id" value="{{ cls.id }}">
+                                    <select name="subject_id" class="form-select form-select-sm" style="width:130px;">
+                                        <option value="">Add subject...</option>
+                                        {% for subj in all_subjects %}
+                                        {% if subj not in cls.subjects.all %}
+                                        <option value="{{ subj.id }}">{{ subj.name }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-outline-success">+</button>
                                 </form>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+                </div>
                 {% else %}
-                <div class="alert alert-info mb-0">No classes yet. Add one to get started.</div>
+                <div class="alert alert-info m-3">No classes yet. Add one to get started.</div>
                 {% endif %}
             </div>
         </div>

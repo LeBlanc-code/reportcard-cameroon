@@ -20,7 +20,7 @@
                         <select name="teacher" class="form-select">
                             <option value="">---</option>
                             {% for t in teachers %}
-                            <option value="{{ t.id }}">{{ t.get_full_name }}</option>
+                            <option value="{{ t.id }}">{{ t.get_full_name }} ({{ t.get_role_display }})</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -39,21 +39,21 @@
                     <thead>
                         <tr>
                             <th>Subject</th>
-                            <th>Assigned Teacher</th>
-                            <th>Change Teacher</th>
+                            <th>Teacher</th>
+                            <th>Classes</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for subject in subjects %}
                         <tr>
                             <td><strong>{{ subject.name }}</strong></td>
-                            <td>{{ subject.teacher.get_full_name|default:"Unassigned" }}</td>
                             <td>
-                                <form method="post" class="d-flex gap-2 align-items-center">
+                                <form method="post" class="d-flex gap-1 align-items-center">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="assign">
                                     <input type="hidden" name="subject_id" value="{{ subject.id }}">
-                                    <select name="teacher_id" class="form-select form-select-sm" style="width:auto;">
+                                    <select name="teacher_id" class="form-select form-select-sm" style="width:130px;">
                                         <option value="">---</option>
                                         {% for t in teachers %}
                                         <option value="{{ t.id }}" {% if subject.teacher == t %}selected{% endif %}>
@@ -61,8 +61,40 @@
                                         </option>
                                         {% endfor %}
                                     </select>
-                                    <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
                                 </form>
+                            </td>
+                            <td>
+                                <small>
+                                {% for cls in subject.classes.all %}
+                                    <span class="badge bg-secondary d-inline-flex align-items-center gap-1">
+                                        {{ cls.name }}
+                                        <form method="post" class="d-inline" style="line-height:1;">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="remove_from_class">
+                                            <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                            <input type="hidden" name="class_id" value="{{ cls.id }}">
+                                            <button type="submit" class="btn-close btn-close-white"
+                                                    style="font-size:0.5rem;"
+                                                    aria-label="Remove from {{ cls.name }}"
+                                                    onclick="return confirm('Remove {{ subject.name|escapejs }} from {{ cls.name|escapejs }}?')"></button>
+                                        </form>
+                                    </span>
+                                {% empty %}
+                                    <span class="text-muted">None</span>
+                                {% endfor %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <form method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="subject_id" value="{{ subject.id }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Permanently delete {{ subject.name|escapejs }}?')">Delete</button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -73,6 +105,40 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if classes %}
+        <div class="card shadow-sm mt-4">
+            <div class="card-header bg-warning"><h5 class="mb-0">Remove Subject from Class</h5></div>
+            <div class="card-body">
+                <form method="post" class="row g-2 align-items-end">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_from_class">
+                    <div class="col-md-4">
+                        <label class="form-label small">Subject</label>
+                        <select name="subject_id" class="form-select form-select-sm" required>
+                            <option value="">---</option>
+                            {% for s in subjects %}
+                            <option value="{{ s.id }}">{{ s.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small">Class</label>
+                        <select name="class_id" class="form-select form-select-sm" required>
+                            <option value="">---</option>
+                            {% for cls in classes %}
+                            <option value="{{ cls.id }}">{{ cls.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Remove this subject from the class?')">Remove</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
