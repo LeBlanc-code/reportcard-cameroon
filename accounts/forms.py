@@ -107,13 +107,30 @@ class CreateUserForm(UserCreationForm):
 
 
 class MarkForm(forms.ModelForm):
+    student_first_name = forms.CharField(
+        max_length=150,
+        label='Student First Name',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Type the student\'s first name'
+        })
+    )
+    student_last_name = forms.CharField(
+        max_length=150,
+        label='Student Last Name',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Type the student\'s last name'
+        })
+    )
+
     def __init__(self, *args, user=None, class_id=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
         self.target_class = None
+        self.fields.pop('student', None)
 
         subject_qs = Subject.objects.all()
-        student_qs = StudentProfile.objects.all()
 
         if user is not None:
             if user.role == 'teacher':
@@ -125,14 +142,9 @@ class MarkForm(forms.ModelForm):
 
                 if self.target_class:
                     subject_qs = self.target_class.subjects.filter(teacher=user)
-                    student_qs = StudentProfile.objects.filter(school_class=self.target_class)
                 else:
                     subject_qs = Subject.objects.filter(teacher=user)
-                    student_qs = StudentProfile.objects.filter(
-                        school_class__in=teacher_classes
-                    )
             elif user.role == 'class_master':
-                student_qs = StudentProfile.objects.filter(school_class__class_master=user)
                 my_class = Class.objects.filter(class_master=user).first()
                 if my_class:
                     self.target_class = my_class
@@ -144,36 +156,50 @@ class MarkForm(forms.ModelForm):
                     ).first()
                 if self.target_class:
                     subject_qs = self.target_class.subjects.all()
-                    student_qs = StudentProfile.objects.filter(school_class=self.target_class)
-                else:
-                    student_qs = StudentProfile.objects.filter(
-                        school_class__school=user.school
-                    )
 
         self.fields['subject'].queryset = subject_qs
-        self.fields['student'].queryset = student_qs
 
     def clean(self):
         cleaned_data = super().clean()
+        first_name = cleaned_data.get('student_first_name', '').strip()
+        last_name = cleaned_data.get('student_last_name', '').strip()
         score = cleaned_data.get('score')
-        student = cleaned_data.get('student')
         subject = cleaned_data.get('subject')
         term = cleaned_data.get('term')
 
-        if score and student and subject and term:
+        if not first_name or not last_name:
+            if not first_name:
+                self.add_error('student_first_name', 'First name is required.')
+            if not last_name:
+                self.add_error('student_last_name', 'Last name is required.')
+            return cleaned_data
+
+        if not self.target_class:
+            self.add_error(None, ValidationError('No class selected. Please select a class first.'))
+            return cleaned_data
+
+        student_user, student_profile, self._is_new_student = MarkSubmissionService.get_or_create_student(
+            first_name=first_name,
+            last_name=last_name,
+            school_class=self.target_class,
+        )
+        self._student_user = student_user
+        cleaned_data['student'] = student_profile
+
+        if score and student_profile and subject and term:
             try:
                 MarkSubmissionService.validate_score(score)
             except ValidationError as e:
                 self.add_error('score', e)
 
             existing_mark = MarkSubmissionService.check_duplicate_mark(
-                student, subject, term
+                student_profile, subject, term
             )
             if existing_mark:
                 self.add_error(
                     None,
                     ValidationError(
-                        f"A mark for {student.user.get_full_name()} in {subject.name} ({term}) "
+                        f"A mark for {student_profile.user.get_full_name()} in {subject.name} ({term}) "
                         f"already exists. You can update it directly.",
                         code='duplicate_mark'
                     )
@@ -186,12 +212,12 @@ class MarkForm(forms.ModelForm):
                     self.add_error('subject', e)
 
                 try:
-                    MarkSubmissionService.validate_student_authorization(self.user, student)
+                    MarkSubmissionService.validate_student_authorization(self.user, student_profile)
                 except ValidationError as e:
-                    self.add_error('student', e)
+                    self.add_error('student_first_name', e)
 
             try:
-                MarkSubmissionService.check_marks_deadline(student, term)
+                MarkSubmissionService.check_marks_deadline(student_profile, term)
             except ValidationError as e:
                 self.add_error(None, e)
 
@@ -199,9 +225,8 @@ class MarkForm(forms.ModelForm):
 
     class Meta:
         model = Mark
-        fields = ["student", "subject", "score", "term"]
+        fields = ["subject", "score", "term"]
         widgets = {
-            "student": forms.Select(attrs={"class": "form-control"}),
             "subject": forms.Select(attrs={"class": "form-control"}),
             "score": forms.NumberInput(attrs={"class": "form-control", "placeholder": "Enter score (0-100)"}),
             "term": forms.TextInput(attrs={"class": "form-control", "placeholder": "Term name"}),

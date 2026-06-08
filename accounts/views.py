@@ -193,12 +193,19 @@ def enter_mark_view(request):
                     term=term
                 )
 
-                if success:
+                if success and getattr(form, '_is_new_student', False):
+                    new_user = form._student_user
+                    messages.success(
+                        request,
+                        f'New student created! Username: {new_user.username}, Password: student123. {message}'
+                    )
+                elif success:
                     messages.success(request, message)
-                    redirect_url = reverse('enter_mark')
-                    if class_id:
-                        redirect_url += f'?class_id={class_id}'
-                    return redirect(redirect_url)
+
+                redirect_url = reverse('enter_mark')
+                if class_id:
+                    redirect_url += f'?class_id={class_id}'
+                return redirect(redirect_url)
             except ValidationError as e:
                 messages.error(request, str(e))
         else:

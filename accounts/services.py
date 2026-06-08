@@ -4,7 +4,7 @@ Business logic layer for mark submission and validation.
 
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from .models import Mark, StudentProfile, Subject, Class, TermConfig
+from .models import Mark, StudentProfile, Subject, Class, TermConfig, CustomUser, ReportCard
 import datetime
 
 
@@ -91,6 +91,46 @@ class MarkSubmissionService:
             )
 
     @staticmethod
+    def get_or_create_student(first_name, last_name, school_class):
+        first_name = first_name.strip().title()
+        last_name = last_name.strip().title()
+
+        existing = StudentProfile.objects.filter(
+            user__first_name__iexact=first_name,
+            user__last_name__iexact=last_name,
+            school_class=school_class
+        ).first()
+
+        if existing:
+            return existing.user, existing, False
+
+        school = school_class.school
+        username_base = f"{first_name.lower()}.{last_name.lower()}"
+        username = username_base
+        counter = 1
+        while CustomUser.objects.filter(username=username).exists():
+            username = f"{username_base}{counter}"
+            counter += 1
+
+        password = 'student123'
+        user = CustomUser(
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            role='student',
+            school=school,
+        )
+        user.set_password(password)
+        user.save()
+
+        profile = StudentProfile.objects.create(
+            user=user,
+            school_class=school_class
+        )
+
+        return user, profile, True
+
+    @staticmethod
     @transaction.atomic
     def submit_mark(user, student, subject, score, term, replace_existing=False):
         MarkSubmissionService.validate_score(score)
@@ -119,6 +159,11 @@ class MarkSubmissionService:
             subject=subject,
             score=score,
             term=term
+        )
+
+        ReportCard.objects.get_or_create(
+            student=student,
+            defaults={'term': term}
         )
 
         return (
